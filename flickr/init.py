@@ -1,5 +1,6 @@
-import flickr_api as flickr
+import os
 import logging
+import flickr_api as flickr
 
 
 def auth_in_browser(perms):
@@ -8,6 +9,7 @@ def auth_in_browser(perms):
         1. oauth support url redirect after auth done
         2. we can setup a HTTP server to get such token
     '''
+    logging.info("auth in browser")
     port = 5678
     redirt_url = "http://localhost:%s/" % port
 
@@ -52,6 +54,9 @@ def auth_in_browser(perms):
 
 
 def init_flickr():
+    # logging config
+    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+
     API_KEY = ""
     API_SEC = ""
 
@@ -59,6 +64,7 @@ def init_flickr():
     try:
         # try to load old auth file first
         auth = flickr.auth.AuthHandler.load(AUTH_FILE)
+        logging.info("load config from %s" % AUTH_FILE)
     except:
         flickr.set_keys(api_key=API_KEY, api_secret=API_SEC)
         auth = auth_in_browser('write')
@@ -67,4 +73,22 @@ def init_flickr():
     flickr.set_auth_handler(auth)
 
 
+def download_all_photos():
+    # create saved dir
+    savedir = "photos"
+    try:
+        os.mkdir(savedir)
+    except:
+        pass
+    # get photos
+    user = flickr.test.login()
+    for photo in user.getPhotos():
+        filename = (photo.title if photo.title else photo.id) + ".jpg"
+        fpath = os.path.join(savedir, filename)
+        size = "Original"
+        logging.info("%s ==> %s" % (photo.getPhotoUrl(size), fpath))
+        photo.save(fpath, size_label=size)
+
+
 init_flickr()
+download_all_photos()
