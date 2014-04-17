@@ -82,23 +82,29 @@ def download_all_photos():
         pass
     # get photos
     user = flickr.test.login()
-    for photo in user.getPhotos():
-        basename = (photo.title if photo.title else photo.id)
-        filename = basename + ".jpg"
-        fpath = os.path.join(savedir, filename)
-        # make sure we found an available path
-        index = 1
-        base, ext = os.path.splitext(fpath)
-        while 1:
-            if os.path.exists(fpath):
-                fpath = base + str(index) + ext
-            else:
-                break
-            index += 1
-        size = "Original"
-        logging.info("%s ==> %s" % (photo.getPhotoUrl(size), fpath))
-        photo.save(fpath, size_label=size)
+    # flickr user.getPhotos only return 1 page of photos
+    # to fetch all photos, need to retrieve page by page
+    pages = user.getPhotos().info.pages
+    for page in range(1, pages + 1):
+        logging.info("Download photos of page %d" % page)
+        # download specified page photos
+        for photo in user.getPhotos(page=page):
+            basename = (photo.title if photo.title else photo.id)
+            filename = basename + ".jpg"
+            fpath = os.path.join(savedir, filename)
+            # make sure we found an available path
+            index = 1
+            base, ext = os.path.splitext(fpath)
+            while 1:
+                if os.path.exists(fpath):
+                    fpath = base + str(index) + ext
+                else:
+                    break
+                index += 1
+            size = "Original"
+            logging.info("%s ==> %s" % (photo.getPhotoUrl(size), fpath))
+            photo.save(fpath, size_label=size)
 
-
-init_flickr()
-download_all_photos()
+if __name__ == "__main__":
+    init_flickr()
+    download_all_photos()
