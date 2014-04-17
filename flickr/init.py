@@ -83,8 +83,18 @@ def download_all_photos():
     # get photos
     user = flickr.test.login()
     for photo in user.getPhotos():
-        filename = (photo.title if photo.title else photo.id) + ".jpg"
+        basename = (photo.title if photo.title else photo.id)
+        filename = basename + ".jpg"
         fpath = os.path.join(savedir, filename)
+        # make sure we found an available path
+        index = 1
+        base, ext = os.path.splitext(fpath)
+        while 1:
+            if os.path.exists(fpath):
+                fpath = base + str(index) + ext
+            else:
+                break
+            index += 1
         size = "Original"
         logging.info("%s ==> %s" % (photo.getPhotoUrl(size), fpath))
         photo.save(fpath, size_label=size)
