@@ -73,6 +73,35 @@ def init_flickr():
     flickr.set_auth_handler(auth)
 
 
+def save_photo(photo, directory="./"):
+    # determine filename
+    basename = (photo.title if photo.title else photo.id)
+    filename = basename + ".jpg"
+    # if photo belong to specified set, create a directory
+    sets = photo.getAllContexts()[0]
+    if sets:  # photo belong to certain set
+        s = sets[0]  # only pick first set
+        savedir = os.path.join(directory, s.title)
+        if not os.path.exists(savedir):  # mkdir if necessary
+            os.mkdir(savedir)
+    else:
+        savedir = directory
+    fpath = os.path.join(savedir, filename)
+    # make sure we found an available path
+    index = 1
+    base, ext = os.path.splitext(fpath)
+    while 1:
+        if os.path.exists(fpath):
+            fpath = base + str(index) + ext
+        else:
+            break
+        index += 1
+    # save original size
+    size = "Original"
+    logging.info("%s ==> %s" % (photo.getPhotoFile(size), fpath))
+    photo.save(fpath, size_label=size)
+
+
 def download_all_photos():
     # create saved dir
     savedir = "photos"
@@ -89,21 +118,8 @@ def download_all_photos():
         logging.info("Download photos of page %d" % page)
         # download specified page photos
         for photo in user.getPhotos(page=page):
-            basename = (photo.title if photo.title else photo.id)
-            filename = basename + ".jpg"
-            fpath = os.path.join(savedir, filename)
-            # make sure we found an available path
-            index = 1
-            base, ext = os.path.splitext(fpath)
-            while 1:
-                if os.path.exists(fpath):
-                    fpath = base + str(index) + ext
-                else:
-                    break
-                index += 1
-            size = "Original"
-            logging.info("%s ==> %s" % (photo.getPhotoUrl(size), fpath))
-            photo.save(fpath, size_label=size)
+            save_photo(photo, savedir)
+
 
 if __name__ == "__main__":
     init_flickr()
