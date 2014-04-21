@@ -29,6 +29,39 @@ class FlickrSync():
         flickr_api.set_auth_handler(auth)
         self.user = flickr_api.test.login()  # get current user
 
+    def get_all_photos(self):
+        photos = []
+        user = self.user
+        # flickr_api user.getPhotos only return 1 page of photos
+        # to fetch all photos, need to retrieve page by page
+        pages = user.getPhotos().info.pages
+        for page in range(1, pages + 1):
+            photos += user.getPhotos(page=page).data
+        return photos
+
+    def photo2model(self, photo):
+        model = Flickr(photoid=photo.id)
+        model.title = photo.title if photo.title else photo.id
+        # get info: lastupdate & ispublic
+        info = photo.getInfo()
+        model.lastupdate = info.get('lastupdate', '')
+        model.ispublic = info.get('ispublic', True)
+        # update photo set field
+        sets = photo.getAllContexts()[0]
+        if sets:
+            s = sets[0]  # only pick first set
+            model.photoset = s.id
+            model.album = s.title
+        return model
+
+    def update(self):
+        ''' update Flickr table from web '''
+        logging.info('update Flickr table from web')
+        for photo in self.get_all_photos():
+            logging.debug('update photo %s' % photo)
+            f = self.photo2model(photo)
+            f.save(force_insert=True)
+
     @staticmethod
     def save_photo(photo, directory="./"):
         # determine filename
@@ -65,16 +98,8 @@ class FlickrSync():
             os.mkdir(savedir)
         except:
             pass
-        # get photos
-        user = self.user
-        # flickr_api user.getPhotos only return 1 page of photos
-        # to fetch all photos, need to retrieve page by page
-        pages = user.getPhotos().info.pages
-        for page in range(1, pages + 1):
-            logging.info("Download photos of page %d" % page)
-            # download specified page photos
-            for photo in user.getPhotos(page=page):
-                self.save_photo(photo, savedir)
+        for photo in self.get_all_photos():
+            self.save_photo(photo, savedir)
 
     @staticmethod
     def auth_in_browser(perms):
@@ -129,4 +154,5 @@ class FlickrSync():
 
 if __name__ == "__main__":
     fsync = FlickrSync()
-    fsync.download_all_photos()
+    #fsync.download_all_photos()
+    fsync.update()
