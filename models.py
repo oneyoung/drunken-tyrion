@@ -21,5 +21,5 @@ class Flickr(BaseModel):
     photoid = CharField(unique=True)
     local = ForeignKeyField(Local, null=True)  # mapping to local file
     photoset = CharField(null=True)  # if photo belong to certain set
-    lastupdate = CharFiled()
+    lastupdate = CharField()
     ispublic = BooleanField()
