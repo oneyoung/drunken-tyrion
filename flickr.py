@@ -1,6 +1,6 @@
 import os
 import logging
-import flickr_api as flickr
+import flickr_api
 
 
 def auth_in_browser(perms):
@@ -14,7 +14,7 @@ def auth_in_browser(perms):
     redirt_url = "http://localhost:%s/" % port
 
     # get auth url
-    auth = flickr.auth.AuthHandler(callback=redirt_url)
+    auth = flickr_api.auth.AuthHandler(callback=redirt_url)
     url = auth.get_authorization_url(perms)
     # open url in browser
     import webbrowser
@@ -53,7 +53,7 @@ def auth_in_browser(perms):
     return auth
 
 
-def init_flickr():
+def init():
     # logging config
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
@@ -63,14 +63,14 @@ def init_flickr():
     AUTH_FILE = ".flickr_auth"
     try:
         # try to load old auth file first
-        auth = flickr.auth.AuthHandler.load(AUTH_FILE)
+        auth = flickr_api.auth.AuthHandler.load(AUTH_FILE)
         logging.info("load config from %s" % AUTH_FILE)
     except:
-        flickr.set_keys(api_key=API_KEY, api_secret=API_SEC)
+        flickr_api.set_keys(api_key=API_KEY, api_secret=API_SEC)
         auth = auth_in_browser('write')
         auth.save(AUTH_FILE, True)  # also include API keys
 
-    flickr.set_auth_handler(auth)
+    flickr_api.set_auth_handler(auth)
 
 
 def save_photo(photo, directory="./"):
@@ -110,8 +110,8 @@ def download_all_photos():
     except:
         pass
     # get photos
-    user = flickr.test.login()
-    # flickr user.getPhotos only return 1 page of photos
+    user = flickr_api.test.login()
+    # flickr_api user.getPhotos only return 1 page of photos
     # to fetch all photos, need to retrieve page by page
     pages = user.getPhotos().info.pages
     for page in range(1, pages + 1):
@@ -122,5 +122,5 @@ def download_all_photos():
 
 
 if __name__ == "__main__":
-    init_flickr()
+    init()
     download_all_photos()
