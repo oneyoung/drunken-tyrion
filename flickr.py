@@ -48,6 +48,8 @@ class FlickrSync():
         info = photo.getInfo()
         meta['lastupdate'] = info.get('lastupdate', '')
         meta['ispublic'] = info.get('ispublic', True)
+        meta['extension'] = info.get('originalformat', 'jpg')
+        meta['url'] = photo.getPhotoFile()
         # update photo set field
         sets = photo.getAllContexts()[0]
         if sets:

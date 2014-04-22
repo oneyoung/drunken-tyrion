@@ -21,7 +21,10 @@ class Local(BaseModel):
 
 class Flickr(BaseModel):
     photoid = CharField(primary_key=True)
-    local = ForeignKeyField(Local, null=True)  # mapping to local file
     photoset = CharField(null=True)  # if photo belong to certain set
     lastupdate = CharField()
     ispublic = BooleanField()
+    # public members
+    url = CharField()  # url of photo
+    extension = CharField()  # file extension
+    local = ForeignKeyField(Local, null=True)  # mapping to local file
