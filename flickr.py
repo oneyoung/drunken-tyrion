@@ -39,28 +39,41 @@ class FlickrSync():
             photos += user.getPhotos(page=page).data
         return photos
 
-    def photo2model(self, photo):
-        model = Flickr(photoid=photo.id)
-        model.title = photo.title if photo.title else photo.id
+    def photo2meta(self, photo):
+        meta = {
+            'photoid': photo.id,
+            'title': photo.title if photo.title else photo.id,
+        }
         # get info: lastupdate & ispublic
         info = photo.getInfo()
-        model.lastupdate = info.get('lastupdate', '')
-        model.ispublic = info.get('ispublic', True)
+        meta['lastupdate'] = info.get('lastupdate', '')
+        meta['ispublic'] = info.get('ispublic', True)
         # update photo set field
         sets = photo.getAllContexts()[0]
         if sets:
             s = sets[0]  # only pick first set
-            model.photoset = s.id
-            model.album = s.title
-        return model
+            meta['photoset'] = s.id
+            meta['album'] = s.title
+        else:
+            meta['photoset'] = ''
+            meta['album'] = ''
+        return meta
 
     def update(self):
         ''' update Flickr table from web '''
         logging.info('update Flickr table from web')
         for photo in self.get_all_photos():
             logging.debug('update photo %s' % photo)
-            f = self.photo2model(photo)
-            f.save(force_insert=True)
+            m = self.photo2meta(photo)
+            # update table: try get first, otherwise create a new record
+            try:
+                f = Flickr.get(photoid=m['photoid'])
+                for k in m.keys():
+                    if hasattr(f, k):
+                        setattr(f, k, m[k])
+                f.save()
+            except Flickr.DoesNotExist:
+                Flickr.create(**m)
 
     @staticmethod
     def save_photo(photo, directory="./"):
