@@ -23,10 +23,16 @@ class LocalSync():
         album = model.album
         # path consist of "album/title.ext"
         filename = '%s.%s' % (model.title, model.extension)
-        if model.album:
-            path = os.path.join(self.folder, model.album, filename)
-        else:
-            path = os.path.join(self.folder, filename)
+        folder = self.folder
+        if album:
+            album = model.album
+            if not album.path:
+                album.path = album.title
+                album.save()
+            folder = os.path.join(folder, album.path)
+            if not os.path.exists(folder):
+                os.mkdir(folder)
+        path = os.path.join(folder, filename)
         logging.info('retrieve %s --> %s' % (model.url, path))
         urllib.urlretrieve(model.url, path)
         last_modified = datetime.datetime.now()

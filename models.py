@@ -5,9 +5,15 @@ DB_NAME = "db.sqlite"
 database = SqliteDatabase(DB_NAME)
 
 
+class Album(Model):
+    name = CharField()
+    folder = CharField(null=True)
+    flickr_setid = CharField(null=True)  # flickr photoset id
+
+
 class BaseModel(Model):
     title = CharField(null=True)
-    album = CharField(null=True)
+    album = ForeignKeyField(Album, null=True)
 
     class Meta:
         database = database
@@ -21,7 +27,6 @@ class Local(BaseModel):
 
 class Flickr(BaseModel):
     photoid = CharField(primary_key=True)
-    photoset = CharField(null=True)  # if photo belong to certain set
     lastupdate = CharField()
     ispublic = BooleanField()
     # public members

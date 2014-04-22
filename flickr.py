@@ -1,7 +1,7 @@
 import os
 import logging
 import flickr_api
-from models import Flickr
+from models import Album, Flickr
 
 API_KEY = ""
 API_SEC = ""
@@ -55,27 +55,39 @@ class FlickrSync():
         if sets:
             s = sets[0]  # only pick first set
             meta['photoset'] = s.id
-            meta['album'] = s.title
-        else:
-            meta['photoset'] = ''
-            meta['album'] = ''
+            meta['album_name'] = s.title
         return meta
+
+    def save2db(self, photo):
+        m = self.photo2meta(photo)
+        # update table: try get first, otherwise create a new record
+        try:
+            f = Flickr.get(photoid=m['photoid'])
+            for k in m.keys():
+                if hasattr(f, k):
+                    setattr(f, k, m[k])
+        except Flickr.DoesNotExist:
+            f = Flickr.create(**m)
+        # binding album
+        name = m.get('album_name', '')
+        if name:
+            if f.album:
+                a = f.album
+            else:
+                try:
+                    a = Album.get(name=name)
+                except:
+                    a = Album.create(name=name, flickr_setid=m.get('photoset'))
+            f.album = a
+        # saving to db
+        f.save()
 
     def update(self):
         ''' update Flickr table from web '''
         logging.info('update Flickr table from web')
         for photo in self.get_all_photos():
             logging.debug('update photo %s' % photo)
-            m = self.photo2meta(photo)
-            # update table: try get first, otherwise create a new record
-            try:
-                f = Flickr.get(photoid=m['photoid'])
-                for k in m.keys():
-                    if hasattr(f, k):
-                        setattr(f, k, m[k])
-                f.save()
-            except Flickr.DoesNotExist:
-                Flickr.create(**m)
+            self.save2db(photo)
 
     @staticmethod
     def save_photo(photo, directory="./"):
