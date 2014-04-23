@@ -13,10 +13,6 @@ class FlickrSync():
         # logging config
         logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-        # init models if necessary
-        if not Flickr.table_exists():
-            Flickr.create_table()
-
         try:
             # try to load old auth file first
             auth = flickr_api.auth.AuthHandler.load(AUTH_FILE)
@@ -74,10 +70,7 @@ class FlickrSync():
             if f.album:
                 a = f.album
             else:
-                try:
-                    a = Album.get(name=name)
-                except:
-                    a = Album.create(name=name, flickr_setid=m.get('photoset'))
+                a = Album.fetch_update(name, flickr_setid=m.get('photoset'))
             f.album = a
         # saving to db
         f.save()

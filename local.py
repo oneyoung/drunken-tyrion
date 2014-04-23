@@ -10,9 +10,6 @@ LOCAL_FOLDER = 'photos/'
 
 class LocalSync():
     def __init__(self):
-        # create table if necessary
-        if not Local.table_exists():
-            Local.create_table()
         # make sure directory is exists
         self.folder = LOCAL_FOLDER
         if not os.path.exists(self.folder):
