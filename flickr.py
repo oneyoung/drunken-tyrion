@@ -55,6 +55,7 @@ class FlickrSync():
         return meta
 
     def save2db(self, photo):
+        ''' save flickr_api.Photo object to Flickr table, and return DB obj '''
         m = self.photo2meta(photo)
         # update table: try get first, otherwise create a new record
         try:
@@ -74,6 +75,7 @@ class FlickrSync():
             f.album = a
         # saving to db
         f.save()
+        return f
 
     def update(self):
         ''' update Flickr table from web '''
@@ -81,6 +83,46 @@ class FlickrSync():
         for photo in self.get_all_photos():
             logging.debug('update photo %s' % photo)
             self.save2db(photo)
+
+    def fromlocal(self, local):
+        ''' accept one Local object and update them to flickr '''
+        if not local.flicr_set.count():  # upload new image
+            photo = flickr_api.upload(photo_file=local.path, title=local.title)
+            album = local.album
+            # TODO: whatif photo upload complete, but exception happens when
+            # create photoset?
+            if album:  # has associated album
+                if not album.flickr_setid:  # photoset not exists on web, create
+                    # photoset already set primary_photo_id, no need to
+                    # call addPhoto again
+                    photoset = flickr_api.Photoset(title=album.title,
+                                                   primary_photo_id=photo.id)
+                    # save back photoset.id to album
+                    album.flickr_setid = photoset.id
+                    album.save()
+                else:
+                    photoset = flickr_api.Photoset(id=album.flickr_setid)
+                    photoset.addPhoto(photo)
+            f = self.save2db(photo)
+            f.local = local  # save local to Flickr
+            f.save()
+        else:  # image already exists, need do some update
+            f = local.flicr_set.first()
+            photo = flickr_api.Photo(id=f.photoid)
+            # Note: from Local's view, it can only detective either path
+            # change(title or album change) or file content change. The two
+            # change CANNOT happen in the same time.
+            # TODO: support album change detection
+            if local.title != f.title:  # need to update title
+                photo.setMeta(title=local.title, description='')
+            else:
+                photo = flickr_api.replace(photo_file=local.path, photo_id=photo.id)
+            self.save2db(photo)  # update back to DB
+
+    def sync_from_local(self, objs):
+        ''' accept Local objects and sync them to Flickr '''
+        for obj in objs:
+            self.fromlocal()
 
     @staticmethod
     def save_photo(photo, directory="./"):
