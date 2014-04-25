@@ -177,7 +177,8 @@ class FlickrSync():
         for f in Flickr.select():
             if not f.local and f not in updates:
                 updates.append(f)
-        return updates
+        # flickr can only download public photo by url
+        return filter(lambda f: f.ispublic, updates)
 
     @staticmethod
     def save_photo(photo, directory="./"):
