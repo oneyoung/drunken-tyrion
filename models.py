@@ -5,7 +5,12 @@ DB_NAME = "db.sqlite"
 database = SqliteDatabase(DB_NAME)
 
 
-class Album(Model):
+class BaseModel(Model):
+    class Meta:
+        database = database
+
+
+class Album(BaseModel):
     name = CharField()
     folder = CharField(null=True)
     flickr_setid = CharField(null=True)  # flickr photoset id
@@ -33,21 +38,18 @@ class Album(Model):
         return obj
 
 
-class BaseModel(Model):
+class BasePhotoModel(BaseModel):
     title = CharField(null=True)
     album = ForeignKeyField(Album, null=True)
 
-    class Meta:
-        database = database
 
-
-class Local(BaseModel):
+class Local(BasePhotoModel):
     path = CharField()
     md5 = CharField()  # MD5 checksum of file
     last_modified = DateField()
 
 
-class Flickr(BaseModel):
+class Flickr(BasePhotoModel):
     photoid = CharField(primary_key=True)
     lastupdate = CharField()
     ispublic = BooleanField()
@@ -56,7 +58,13 @@ class Flickr(BaseModel):
     extension = CharField()  # file extension
     local = ForeignKeyField(Local, null=True)  # mapping to local file
 
+
+class Misc(BaseModel):
+    ''' a misc talbe to store config '''
+    name = CharField(primary_key=True)
+    value = CharField(null=True)
+
 # create table if necessary
-for m in [Album, Local, Flickr]:
+for m in [Album, Local, Flickr, Misc]:
     if not m.table_exists():
         m.create_table()

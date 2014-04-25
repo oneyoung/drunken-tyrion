@@ -1,7 +1,28 @@
 import os
+import time
 import logging
 import flickr_api
-from models import Album, Flickr
+from models import Album, Flickr, Misc
+
+
+# last_update_timestamp
+class LastUpdateTime():
+    name = 'flickr_last_update_timestamp'
+
+    @classmethod
+    def get(cls):
+        ''' return Unix timestamp of lastUpdateTime '''
+        m = Misc.get_or_create(name=cls.name)
+        return float(m.value) if m.value else 0.0
+
+    @classmethod
+    def set(cls, ts):
+        ''' accept a float value represent unix timestamp and save to db '''
+        value = str(ts)
+        m = Misc.get_or_create(name=cls.name)
+        m.value = value
+        m.save()
+
 
 API_KEY = ""
 API_SEC = ""
@@ -25,14 +46,22 @@ class FlickrSync():
         flickr_api.set_auth_handler(auth)
         self.user = flickr_api.test.login()  # get current user
 
-    def get_all_photos(self):
+    def get_all_photos(self, since=0.0):
+        ''' get_all_photos from specified user
+        Note: if "since" given, only fetch photos after since
+        '''
         photos = []
         user = self.user
-        # flickr_api user.getPhotos only return 1 page of photos
-        # to fetch all photos, need to retrieve page by page
-        pages = user.getPhotos().info.pages
-        for page in range(1, pages + 1):
-            photos += user.getPhotos(page=page).data
+        first_page = user.getPhotos()
+        if len(first_page):  # at least has a photo
+            # only Photo obj has recentlyUpdated API
+            # * in order to get all photos, just set since to 0.0
+            p = first_page[0]
+            # flickr_api user.getPhotos only return 1 page of photos
+            # to fetch all photos, need to retrieve page by page
+            pages = p.recentlyUpdated(min_date=since).info.pages
+            for page in range(1, pages + 1):
+                photos += p.recentlyUpdated(min_date=since, page=page).data
         return photos
 
     def photo2meta(self, photo):
@@ -83,6 +112,7 @@ class FlickrSync():
         for photo in self.get_all_photos():
             logging.debug('update photo %s' % photo)
             self.save2db(photo)
+        LastUpdateTime.set(time.time())  # save now to last_update_timestamp
 
     def fromlocal(self, local):
         ''' accept one Local object and update them to flickr '''
@@ -128,17 +158,21 @@ class FlickrSync():
         ''' return objects that need to sync to local '''
         logging.info('Get Flickr objects that need update to local')
         updates = []
-        # check web first
-        for photo in self.get_all_photos():
+
+        # check web first, only get changes from last_update_timestamp
+        since = LastUpdateTime.get()
+        for photo in self.get_all_photos(since):
             m = self.photo2meta(photo)
             try:
                 f = Flickr.get(photoid=photo.id)
                 if int(m.get('lastupdate')) > int(f.lastupdate):
                     f = self.save2db(photo)
                     updates.append(f)
-            except Flickr.DoesNotExists:  # new photo
+            except Flickr.DoesNotExist:  # new photo
                 f = self.save2db(photo)
                 updates.append(f)
+        LastUpdateTime.set(time.time())  # save now to last_update_timestamp
+
         # traverse local db
         for f in Flickr.select():
             if not f.local and f not in updates:
