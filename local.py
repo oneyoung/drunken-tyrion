@@ -1,5 +1,5 @@
 import os
-import urllib
+import urllib2
 import datetime
 import hashlib
 import logging
@@ -25,14 +25,20 @@ class LocalSync():
         if album:
             album = model.album
             if not album.folder:
-                album.folder = album.title
+                album.folder = album.name
                 album.save()
             folder = os.path.join(folder, album.folder)
             if not os.path.exists(folder):
                 os.mkdir(folder)
         path = os.path.join(folder, filename)
+        # fetch & save to local file
         logging.info('retrieve %s --> %s' % (model.url, path))
-        urllib.urlretrieve(model.url, path)
+        # urllib.urlretrieve does NOT support implicit http_proxy
+        r = urllib2.urlopen(model.url)
+        with open(path, 'wb') as f:
+            f.write(r.read())
+            f.close()
+        # modified timestamp & md5 hash
         last_modified = datetime.datetime.now()
         md5 = hashlib.md5(open(path).read()).hexdigest()
 
@@ -45,13 +51,17 @@ class LocalSync():
         l.last_modified = last_modified
         l.save()
         model.local = l  # set back foreign key
+        model.save()
 
     def update_from(self, sync_cls):
         logging.info('update_from %s' % sync_cls)
         objs = sync_cls.sync_to_local()
         for obj in objs:
             logging.info('Local: save from %s' % obj)
-            self.savefrom(obj)
+            try:
+                self.savefrom(obj)
+            except IOError, e:
+                logging.error('fetch error: %s with Exception: %s' % (obj, e))
 
 
 if __name__ == '__main__':

@@ -42,6 +42,9 @@ class BasePhotoModel(BaseModel):
     title = CharField(null=True)
     album = ForeignKeyField(Album, null=True)
 
+    def __repr__(self):
+        return '<%s: %s>' % (self.__class__.__name__, self.title)
+
 
 class Local(BasePhotoModel):
     path = CharField()
