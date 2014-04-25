@@ -19,10 +19,10 @@ class LocalSync():
     def savefrom(self, model):
         title = model.title
         album = model.album
+
         # path consist of "album/title.ext"
-        filename = '%s.%s' % (model.title, model.extension)
         folder = self.folder
-        if album:
+        if album:  # has associated album
             album = model.album
             if not album.folder:
                 album.folder = album.name
@@ -30,7 +30,22 @@ class LocalSync():
             folder = os.path.join(folder, album.folder)
             if not os.path.exists(folder):
                 os.mkdir(folder)
+        # if old photo exists, remove it first
+        if model.local:
+            os.unlink(model.local.path)
+        # find a suitable path
+        filename = '%s.%s' % (model.title, model.extension)
         path = os.path.join(folder, filename)
+        # make sure we found an available path
+        index = 1
+        base, ext = os.path.splitext(path)
+        while 1:
+            if os.path.exists(path):
+                path = base + str(index) + ext
+            else:
+                break
+            index += 1
+
         # fetch & save to local file
         logging.info('retrieve %s --> %s' % (model.url, path))
         # urllib.urlretrieve does NOT support implicit http_proxy
@@ -38,6 +53,7 @@ class LocalSync():
         with open(path, 'wb') as f:
             f.write(r.read())
             f.close()
+
         # modified timestamp & md5 hash
         last_modified = datetime.datetime.now()
         md5 = hashlib.md5(open(path).read()).hexdigest()
