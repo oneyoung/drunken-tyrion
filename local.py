@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import logging
 from models import Local
+from flickr import FlickrSync
 
 LOCAL_FOLDER = 'photos/'
 
@@ -23,10 +24,10 @@ class LocalSync():
         folder = self.folder
         if album:
             album = model.album
-            if not album.path:
-                album.path = album.title
+            if not album.folder:
+                album.folder = album.title
                 album.save()
-            folder = os.path.join(folder, album.path)
+            folder = os.path.join(folder, album.folder)
             if not os.path.exists(folder):
                 os.mkdir(folder)
         path = os.path.join(folder, filename)
@@ -44,3 +45,16 @@ class LocalSync():
         l.last_modified = last_modified
         l.save()
         model.local = l  # set back foreign key
+
+    def update_from(self, sync_cls):
+        logging.info('update_from %s' % sync_cls)
+        objs = sync_cls.sync_to_local()
+        for obj in objs:
+            logging.info('Local: save from %s' % obj)
+            self.savefrom(obj)
+
+
+if __name__ == '__main__':
+    lsync = LocalSync()
+    fsync = FlickrSync()
+    lsync.update_from(fsync)

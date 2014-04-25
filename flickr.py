@@ -124,6 +124,27 @@ class FlickrSync():
         for obj in objs:
             self.fromlocal()
 
+    def sync_to_local(self):
+        ''' return objects that need to sync to local '''
+        logging.info('Get Flickr objects that need update to local')
+        updates = []
+        # check web first
+        for photo in self.get_all_photos():
+            m = self.photo2meta(photo)
+            try:
+                f = Flickr.get(photoid=photo.id)
+                if int(m.get('lastupdate')) > int(f.lastupdate):
+                    f = self.save2db(photo)
+                    updates.append(f)
+            except Flickr.DoesNotExists:  # new photo
+                f = self.save2db(photo)
+                updates.append(f)
+        # traverse local db
+        for f in Flickr.select():
+            if not f.local and f not in updates:
+                updates.append(f)
+        return updates
+
     @staticmethod
     def save_photo(photo, directory="./"):
         # determine filename
