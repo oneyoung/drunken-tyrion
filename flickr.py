@@ -30,6 +30,8 @@ AUTH_FILE = ".flickr_auth"
 
 
 class FlickrSync():
+    model = Flickr
+
     def __init__(self):
         # logging config
         logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
@@ -116,7 +118,8 @@ class FlickrSync():
 
     def fromlocal(self, local):
         ''' accept one Local object and update them to flickr '''
-        if not local.flicr_set.count():  # upload new image
+        logging.info('FlickrSync: upload %s' % local)
+        if not local.flickr_set.count():  # upload new image
             photo = flickr_api.upload(photo_file=local.path, title=local.title)
             album = local.album
             # TODO: whatif photo upload complete, but exception happens when
@@ -137,7 +140,7 @@ class FlickrSync():
             f.local = local  # save local to Flickr
             f.save()
         else:  # image already exists, need do some update
-            f = local.flicr_set.first()
+            f = local.flickr_set.first()
             photo = flickr_api.Photo(id=f.photoid)
             # Note: from Local's view, it can only detective either path
             # change(title or album change) or file content change. The two
@@ -152,7 +155,7 @@ class FlickrSync():
     def sync_from_local(self, objs):
         ''' accept Local objects and sync them to Flickr '''
         for obj in objs:
-            self.fromlocal()
+            self.fromlocal(obj)
 
     def sync_to_local(self):
         ''' return objects that need to sync to local '''
